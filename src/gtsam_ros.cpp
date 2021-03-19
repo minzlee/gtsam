@@ -678,6 +678,7 @@ void GTSAM_ROS::outputPublishingThread() {
     double publish_rate;
     string base_frame_id, pose_topic, state_topic, path_topic, path_frame_id;
     string pose_topic4Nav;
+    string offset_x, offset_y;
 
     nh.param<double>("settings/publish_rate", publish_rate, 10);
     nh.param<string>("settings/base_frame_id", base_frame_id, "/imu");
@@ -687,6 +688,9 @@ void GTSAM_ROS::outputPublishingThread() {
     nh.param<string>("settings/path_topic", path_topic, "/path");
     nh.param<string>("settings/path_frame_id", path_frame_id, "path");
 
+    nh.param<string>("settings/offset_x", offset_x, "offx");
+    nh.param<string>("settings/offset_y", offset_y, "offy");
+
     ROS_INFO("Map frame id set to %s.", map_frame_id_.c_str());
     ROS_INFO("Base frame id set to %s.", base_frame_id.c_str());
     ROS_INFO("Path frame id set to %s.", path_frame_id.c_str());
@@ -694,6 +698,9 @@ void GTSAM_ROS::outputPublishingThread() {
     ROS_INFO("Pose topic Nav publishing under %s.", pose_topic4Nav.c_str());
     ROS_INFO("State topic publishing under %s.", state_topic.c_str());
     ROS_INFO("Path topic publishing under %s.", path_topic.c_str());
+
+    ROS_INFO("offset_x %s.", offset_x.c_str());
+    ROS_INFO("offset_y %s.", offset_y.c_str());
 
     // TODO: Convert output from IMU frame to base frame 
     ROS_INFO("Waiting for tf lookup between frames %s and %s...", imu_frame_id_.c_str(), base_frame_id.c_str());
@@ -736,6 +743,10 @@ void GTSAM_ROS::outputPublishingThread() {
         pose_msg.header.stamp = ros::Time::now();
         pose_msg.header.frame_id = map_frame_id_;
         Eigen::Vector3d position = pose.translation().vector();
+        position(0) += std::stof(offset_x);
+        position(1) += std::stof(offset_y);
+        // position(0) += 157.39;
+        // position(1) += 107.58;
         gtsam::Quaternion quat = pose.rotation().toQuaternion();
          
         pose_msg.pose.pose.position.x = position(0); 
@@ -832,6 +843,22 @@ void GTSAM_ROS::outputPublishingThread() {
         path_pub.publish(path);
         poseNav_pub.publish(OdomPose_msg);
 
+        static tf2_ros::TransformBroadcaster br;
+        geometry_msgs::TransformStamped transformStamped;
+        
+        transformStamped.header.stamp = ros::Time::now();
+        transformStamped.header.frame_id = "wamv/odom";
+        transformStamped.child_frame_id = "wamv/base_link";
+        transformStamped.transform.translation.x = position(0);
+        transformStamped.transform.translation.y = position(1); 
+        transformStamped.transform.translation.z = position(2); 
+        
+        transformStamped.transform.rotation.x = quat.x();
+        transformStamped.transform.rotation.y = quat.y();
+        transformStamped.transform.rotation.z = quat.z();
+        transformStamped.transform.rotation.w = quat.w();
+      
+        br.sendTransform(transformStamped);
         /*
         // Create and send tf message
         tf_broadcaster.sendTransform(tf::StampedTransform(base_pose, ros::Time::now(), map_frame_id_, base_frame_id));

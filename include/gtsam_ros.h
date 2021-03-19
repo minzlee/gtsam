@@ -49,6 +49,10 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/nonlinear/ISAM2.h>
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+
 // !!!! BE CAREFUL !!!!
 #define QUEUE_BUFFER_SIZE 1
 #define MAX_QUEUE_SIZE 150
